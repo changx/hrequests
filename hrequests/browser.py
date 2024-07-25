@@ -2,7 +2,17 @@ import asyncio
 from functools import partial
 from http.client import responses as status_codes
 from threading import Thread
-from typing import Any, Callable, Dict, Iterable, List, Literal, Optional, Pattern, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Literal,
+    Optional,
+    Pattern,
+    Union,
+)
 
 from aioprocessing import Queue
 from playwright._impl._api_types import Error as PlaywrightError
@@ -11,7 +21,11 @@ from playwright._impl._api_types import TimeoutError as PlaywrightTimeoutError
 import hrequests
 from hrequests.client import CaseInsensitiveDict
 from hrequests.cookies import cookiejar_to_list, list_to_cookiejar
-from hrequests.exceptions import BrowserException, BrowserTimeoutException, JavascriptException
+from hrequests.exceptions import (
+    BrowserException,
+    BrowserTimeoutException,
+    JavascriptException,
+)
 from hrequests.headers import Headers
 from hrequests.response import Response
 
@@ -19,8 +33,8 @@ from .cookies import RequestsCookieJar
 from .extensions import BuildExtensions, Extension, load_chrome_exts
 
 _browsers = {
-    'firefox': hrequests.FirefoxBrowser,
-    'chrome': hrequests.ChromeBrowser,
+    "firefox": hrequests.FirefoxBrowser,
+    "chrome": hrequests.ChromeBrowser,
 }
 
 
@@ -81,8 +95,8 @@ class BrowserSession:
         resp: Optional[hrequests.response.Response] = None,
         proxy: Optional[str] = None,
         mock_human: bool = False,
-        browser: Optional[Literal['firefox', 'chrome']] = None,
-        os: Optional[Literal['win', 'mac', 'lin']] = None,
+        browser: Optional[Literal["firefox", "chrome"]] = None,
+        os: Optional[Literal["win", "mac", "lin"]] = None,
         extensions: Optional[Union[str, Iterable[str]]] = None,
     ) -> None:
         # uses asyncio queues to communicate with the asyncio loop from any thread
@@ -94,17 +108,17 @@ class BrowserSession:
         self.session: Optional[hrequests.session.TLSSession] = session
         self.resp: Optional[hrequests.response.Response] = resp
         # use the passed browser
-        self.browser: Literal['firefox', 'chrome'] = browser or 'firefox'
+        self.browser: Literal["firefox", "chrome"] = browser or "firefox"
         # generating headers
         if session:
             # if a session was provided, use the session user-agent
-            self.ua: str = session.headers.get('User-Agent')
+            self.ua: str = session.headers.get("User-Agent")
         else:
             # if a browser or os was provided, generate a user-agent and IGNORE session/resp headers
             # only meant to be used when using BrowserSession as a standalone
-            self.ua: str = Headers(browser=self.browser, os=os, headers=False).generate()[
-                'User-Agent'
-            ]
+            self.ua: str = Headers(
+                browser=self.browser, os=os, headers=False
+            ).generate()["User-Agent"]
         # proxy variables
         self.proxy: Optional[str] = proxy
         # browser config
@@ -130,7 +144,9 @@ class BrowserSession:
     async def main(self) -> None:
         # build the playwright instance
         self.client = await _browsers[self.browser](
-            headless=self.headless, extensions=self.extensions, has_proxy=bool(self.proxy)
+            headless=self.headless,
+            extensions=self.extensions,
+            has_proxy=bool(self.proxy),
         )
         self.context = await self.client.new_context(
             browser_name=self.browser,
@@ -141,11 +157,11 @@ class BrowserSession:
         # create a new page
         self.page = await self.context.new_page()
         # activate extensions on chrome
-        if self.extensions and self.browser == 'chrome':
+        if self.extensions and self.browser == "chrome":
             await load_chrome_exts(self.page, self.extensions)
-        '''
+        """
         run the main loop
-        '''
+        """
         while True:
             try:
                 # listen for calls to _in
@@ -171,7 +187,7 @@ class BrowserSession:
         self._closed = True
         await self.client.stop()
 
-    def __enter__(self) -> 'BrowserSession':
+    def __enter__(self) -> "BrowserSession":
         return self
 
     def __exit__(self, *_) -> None:
@@ -190,11 +206,11 @@ class BrowserSession:
     def __getattr__(self, name) -> Any:
         # sourcery skip: raise-from-previous-error
         if self._closed:
-            raise BrowserException(f'Browser was closed. Attribute call failed: {name}')
+            raise BrowserException(f"Browser was closed. Attribute call failed: {name}")
         # forwards unknown attribute calls to _call_wrapper
         try:
             # check if the attribute (with a leading _) exists
-            attr = self.__getattribute__(f'_{name}')
+            attr = self.__getattribute__(f"_{name}")
         except AttributeError:
             # if it doesn't, raise an error
             raise AttributeError(
@@ -209,47 +225,51 @@ class BrowserSession:
     """
 
     async def _goto(self, url):
-        '''Navigate to a URL'''
+        """Navigate to a URL"""
         resp = await self.page.goto(url)
         self.status_code = resp.status
         return resp
 
     async def _forward(self):
-        '''Navigate to the next page in history'''
+        """Navigate to the next page in history"""
         return await self.page.go_forward()
 
     async def _back(self):
-        '''Navigate to the previous page in history'''
+        """Navigate to the previous page in history"""
         return await self.page.go_back()
 
     async def _awaitNavigation(self, timeout: float = 30):
-        '''
+        """
         Wait for the page navigation to finish
 
         Parameters:
             timeout (float, optional): Timeout in seconds. Defaults to 30.
-        '''
+        """
         return await self.page.wait_for_load_state(timeout=int(timeout * 1e3))
 
-    async def _awaitScript(self, script: str, arg: Optional[str] = None, *, timeout: float = 30):
-        '''
+    async def _awaitScript(
+        self, script: str, arg: Optional[str] = None, *, timeout: float = 30
+    ):
+        """
         Wait for a script to return true
 
         Parameters:
             script (str): Script to evaluate
             arg (str, optional): Argument to pass to script
             timeout (float, optional): Timeout in seconds. Defaults to 30.
-        '''
-        return await self.page.wait_for_function(script, arg=arg, timeout=int(timeout * 1e3))
+        """
+        return await self.page.wait_for_function(
+            script, arg=arg, timeout=int(timeout * 1e3)
+        )
 
     async def _awaitSelector(self, selector, *, timeout: float = 30):
-        '''
+        """
         Wait for a selector to exist
 
         Parameters:
             selector (str): Selector to wait for
             timeout (float, optional): Timeout in seconds. Defaults to 30.
-        '''
+        """
         await self.page.wait_for_function(
             "selector => !!document.querySelector(selector)",
             arg=selector,
@@ -257,13 +277,13 @@ class BrowserSession:
         )
 
     async def _awaitEnabled(self, selector, *, timeout: float = 30):
-        '''
+        """
         Wait for a selector to be enabled
 
         Parameters:
             selector (str): Selector to wait for
             timeout (float, optional): Timeout in seconds. Defaults to 30.
-        '''
+        """
         await self.page.wait_for_function(
             "selector => !document.querySelector(selector).disabled",
             arg=selector,
@@ -271,21 +291,21 @@ class BrowserSession:
         )
 
     async def _isVisible(self, selector: str) -> bool:
-        '''
+        """
         Check if a selector is visible
 
         Parameters:
             selector (str): Selector to check
-        '''
+        """
         return await self.page.is_visible(selector)
 
     async def _isEnabled(self, selector: str) -> bool:
-        '''
+        """
         Check if a selector is enabled
 
         Parameters:
             selector (str): Selector to check
-        '''
+        """
         if not await self.page.is_visible(selector):
             return False
         return await self.page.evaluate(
@@ -293,15 +313,18 @@ class BrowserSession:
         )
 
     async def _awaitUrl(
-        self, url: Union[str, Pattern[str], Callable[[str], bool]], *, timeout: float = 30
+        self,
+        url: Union[str, Pattern[str], Callable[[str], bool]],
+        *,
+        timeout: float = 30,
     ):
-        '''
+        """
         Wait for the url to match a string, regex, or a python function to return True
 
         Parameters:
             url (Union[str, Pattern[str], Callable[[str], bool]]) - URL to match for
             timeout (float, optional): Timeout in seconds. Defaults to 30.
-        '''
+        """
         return await self.page.wait_for_url(url, timeout=int(timeout * 1e3))
 
     async def _dragTo(
@@ -313,7 +336,7 @@ class BrowserSession:
         wait_after: bool = False,  # dont wait for a page event
         check: bool = False,  # check if element is able to be dragged
     ):
-        '''
+        """
         Drag and drop a selector
 
         Parameters:
@@ -322,13 +345,19 @@ class BrowserSession:
             timeout (float, optional): Timeout in seconds. Defaults to 30.
             wait_after (bool, optional): Wait for a page event before continuing. Defaults to False.
             check (bool, optional): Check if an element is draggable before running. Defaults to False.
-        '''
+        """
         return await self.page.drag_and_drop(
-            source, target, no_wait_after=not wait_after, timeout=int(timeout * 1e3), check=check
+            source,
+            target,
+            no_wait_after=not wait_after,
+            timeout=int(timeout * 1e3),
+            check=check,
         )
 
-    async def _type(self, selector: str, text: str, delay: int = 50, *, timeout: float = 30):
-        '''
+    async def _type(
+        self, selector: str, text: str, delay: int = 50, *, timeout: float = 30
+    ):
+        """
         Type text into a selector
 
         Parameters:
@@ -336,19 +365,21 @@ class BrowserSession:
             text (str): Text to type
             delay (int, optional): Delay between keypresses in ms. On mock_human, this is randomized by 50%. Defaults to 50.
             timeout (float, optional): Timeout in seconds. Defaults to 30.
-        '''
-        return await self.page.type(selector, text, delay=delay, timeout=int(timeout * 1e3))
+        """
+        return await self.page.type(
+            selector, text, delay=delay, timeout=int(timeout * 1e3)
+        )
 
     async def _click(
         self,
         selector: str,
-        button: Optional[Literal['left', 'right', 'middle']] = 'left',
+        button: Optional[Literal["left", "right", "middle"]] = "left",
         count: int = 1,
         *,
         timeout: float = 30,
         wait_after: bool = True,
     ):
-        '''
+        """
         Click a selector
 
         Parameters:
@@ -357,7 +388,7 @@ class BrowserSession:
             count (int, optional): Number of clicks. Defaults to 1.
             timeout (float, optional): Timeout in seconds. Defaults to 30.
             wait_after (bool, optional): Wait for a page event before continuing. Defaults to True.
-        '''
+        """
         return await self.page.click(
             selector,
             button=button,
@@ -369,37 +400,43 @@ class BrowserSession:
     async def _hover(
         self,
         selector: str,
-        modifiers: Optional[List[Literal['Alt', 'Control', 'Meta', 'Shift']]] = None,
+        modifiers: Optional[List[Literal["Alt", "Control", "Meta", "Shift"]]] = None,
         *,
         timeout: float = 90,
     ):
-        '''
+        """
         Hover over a selector
 
         Parameters:
             selector (str): CSS selector to hover over
             modifiers (List[Literal['Alt', 'Control', 'Meta', 'Shift']], optional): Modifier keys to press. Defaults to None.
             timeout (float, optional): Timeout in seconds. Defaults to 90.
-        '''
-        return await self.page.hover(selector, modifiers=modifiers, timeout=int(timeout * 1e3))
+        """
+        return await self.page.hover(
+            selector, modifiers=modifiers, timeout=int(timeout * 1e3)
+        )
 
     async def _evaluate(self, script: str, arg: Optional[str] = None):
-        '''
+        """
         Evaluate and return javascript
 
         Parameters:
             script (str): Javascript to evaluate in the page
             arg (str, optional): Argument to pass into the javascript function
-        '''
+        """
         try:
             return await self.page.evaluate(script, arg=arg)
         except PlaywrightError as e:
-            raise JavascriptException('Javascript eval exception') from e
+            raise JavascriptException("Javascript eval exception") from e
 
     async def _screenshot(
-        self, selector: Optional[str], path: Optional[str] = None, *, full_page: bool = False
+        self,
+        selector: Optional[str],
+        path: Optional[str] = None,
+        *,
+        full_page: bool = False,
     ) -> Optional[bytes]:
-        '''
+        """
         Take a screenshot of the page
 
         Parameters:
@@ -409,8 +446,10 @@ class BrowserSession:
 
         Returns:
             Optional[bytes]: Returns the screenshot buffer, if `path` was not provided
-        '''
-        assert not (selector and full_page), 'Cannot use selector and full_page together'
+        """
+        assert not (
+            selector and full_page
+        ), "Cannot use selector and full_page together"
         if selector:
             buffer = await self.page.locator(selector).screenshot(path=path)
         else:
@@ -418,66 +457,72 @@ class BrowserSession:
         if not path:  # dont return buffer if path was provided
             return buffer
 
-    '''
+    async def _set_viewport_size(self, viewport_size: Dict[str, int]):
+        """
+        Set the viewport size
+        """
+        return await self.page.set_viewport_size(viewport_size)
+
+    """
     .url, .content, .cookies, .html, properties
     makes this compatible with TLSSession
-    '''
+    """
 
     async def _getContent(self):
-        '''Get the page content'''
+        """Get the page content"""
         return await self.page.content()
 
     async def _getCookies(self) -> RequestsCookieJar:
-        '''Get the page cookies'''
+        """Get the page cookies"""
         browser_cookies: list = await self.context.cookies()
         return list_to_cookiejar(browser_cookies)
 
     @property
     def url(self) -> str:
-        '''Get the page url'''
+        """Get the page url"""
         return self.page.url
 
     @url.setter
     def url(self, url: str):
-        '''Go to page url'''
+        """Go to page url"""
         self.goto(url)
 
     @property
     def headers(self) -> CaseInsensitiveDict:
-        '''Get the page headers'''
-        return CaseInsensitiveDict({'User-Agent': self.ua})
+        """Get the page headers"""
+        return CaseInsensitiveDict({"User-Agent": self.ua})
 
     @headers.setter
     def headers(self, headers: dict):
-        '''Set headers'''
+        """Set headers"""
         self.setHeaders(headers)
 
     @property
     def content(self) -> str:
-        '''Get the page url'''
+        """Get the page url"""
         return self.getContent()
 
     @property
     def proxies(self):
-        return {'all': self.proxy} if self.proxy else {}
+        return {"all": self.proxy} if self.proxy else {}
 
     @proxies.setter
     def proxies(self, _: dict):
-        raise NotImplementedError('Cannot set proxies on a browser session')
+        raise NotImplementedError("Cannot set proxies on a browser session")
 
     @property
     def cookies(self) -> RequestsCookieJar:
-        '''Get the context cookies'''
+        """Get the context cookies"""
         return self.getCookies()
 
     @cookies.setter
     def cookies(self, cookiejar: RequestsCookieJar):
-        '''Set the context cookies'''
+        """Set the context cookies"""
         self.setCookies(cookiejar)
 
     @property
-    def html(self) -> 'hrequests.parser.HTML':
-        '''Get the page html as an HTML object'''
+    def html(self) -> "hrequests.parser.HTML":
+        """Get the page html as an HTML object"""
         return hrequests.parser.HTML(session=self, url=self.url, html=self.content)
 
     @property
@@ -493,13 +538,13 @@ class BrowserSession:
         if self.status_code is not None:
             return status_codes[self.status_code]
 
-    '''
+    """
     Network request functions
-    '''
+    """
 
     async def _request(
         self,
-        method: Literal['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD'],
+        method: Literal["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD"],
         url: str,
         *,
         params: Optional[Dict[str, Union[str, float, bool]]] = None,
@@ -511,7 +556,7 @@ class BrowserSession:
         verify: bool = True,
         max_redirects: Optional[int] = None,
     ) -> Response:
-        '''
+        """
         Parameters:
             method (Literal['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD']): HTTP method to use
             url (str): URL to send request to
@@ -523,7 +568,7 @@ class BrowserSession:
             timeout (float, optional): Timeout in seconds. Defaults to 30.
             verify (bool, optional): Verify the server's TLS certificate. Defaults to True.
             max_redirects (int, optional): Maximum number of redirects to follow. Defaults to None.
-        '''
+        """
         # convert headers to dict if a CaseInsensitiveDict was provided
         if isinstance(headers, CaseInsensitiveDict):
             headers = dict(headers)
@@ -552,42 +597,42 @@ class BrowserSession:
         return resp
 
     def get(self, url: str, **kwargs):
-        return self.request('GET', url, **kwargs)
+        return self.request("GET", url, **kwargs)
 
     def patch(self, url: str, **kwargs):
-        return self.request('PATCH', url, **kwargs)
+        return self.request("PATCH", url, **kwargs)
 
     def put(self, url: str, **kwargs):
-        return self.request('PUT', url, **kwargs)
+        return self.request("PUT", url, **kwargs)
 
     def post(self, url: str, **kwargs):
-        return self.request('POST', url, **kwargs)
+        return self.request("POST", url, **kwargs)
 
     def delete(self, url: str, **kwargs):
-        return self.request('DELETE', url, **kwargs)
+        return self.request("DELETE", url, **kwargs)
 
     def head(self, url: str, **kwargs):
-        return self.request('HEAD', url, **kwargs)
+        return self.request("HEAD", url, **kwargs)
 
     async def _setHeaders(self, headers: Union[dict, CaseInsensitiveDict]):
-        '''
+        """
         Set the browser headers
 
         Parameters:
             headers (Union[dict, CaseInsensitiveDict]): Headers to set
-        '''
+        """
         await self.context.set_extra_http_headers(
             {
                 **headers,
                 # convert lists to comma separated
-                **{k: ', '.join(v) for k, v in headers.items() if isinstance(v, list)},
+                **{k: ", ".join(v) for k, v in headers.items() if isinstance(v, list)},
             }
         )
 
     async def _loadText(self, text):
         # load content into page
         await self.page.set_content(text)
-        await self.page.wait_for_load_state('domcontentloaded')
+        await self.page.wait_for_load_state("domcontentloaded")
 
     async def _setCookies(self, cookiejar: RequestsCookieJar):
         # convert cookiejar to list of dicts
@@ -624,11 +669,11 @@ def render(
     session: hrequests.session.TLSSession = None,
     mock_human: bool = False,
     extensions: Optional[Union[str, Iterable[str]]] = None,
-    browser: Optional[Literal['firefox', 'chrome']] = None,
+    browser: Optional[Literal["firefox", "chrome"]] = None,
 ):
     assert any(
         (url, session, response is not None)
-    ), 'Must provide a url or an existing session, response'
+    ), "Must provide a url or an existing session, response"
 
     render_session = BrowserSession(
         session=session,
